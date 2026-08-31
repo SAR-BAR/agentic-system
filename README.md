@@ -1,10 +1,6 @@
 # My First Agentic System with LangChain4j
 
-My first hands-on attempt at building an **agentic system using Java, Spring Boot, LangChain4j, and Ollama**.
-
-The goal is to move from understanding agentic concepts theoretically to actually implementing them.
-
-Currently, this is a **single-agent system**. The customer-support domain is only used as a simple environment to experiment with agent architecture.
+My first hands-on attempt at building an agentic system using Java, Spring Boot, LangChain4j, and Ollama.
 
 ## Tech Stack
 
@@ -37,22 +33,26 @@ Currently, this is a **single-agent system**. The customer-support domain is onl
 User
  |
  v
-Single Agent
+Coordinator
+ |
+ +-------------------+
+ |                   |
+ v                   v
+Verifier Agent    Refund Agent
+ |                   |
+ v                   v
+Customer Tools     Order Tools
  |
  v
-Local LLM (Ollama)
+VerificationFindings
  |
- +------------+-------------+------------------+
- |            |             |                  |
- v            v             v                  v
-getCustomer  lookupOrder  processRefund  escalateToHuman
- |            |             |                  |
- +------------+-------------+------------------+
-                         |
-                         v
-                    Tool Result
-                         |
-                         v
-                        LLM
-                         |
-                    Continue / Finish
+ v
+Coordinator Context
+```
+
+The project started as a single-agent system and is now being extended into a multi-agent system, one concept at a time.
+
+The goal is not to build a production customer-support system, but to get hands-on with how agentic systems are actually built.
+
+More things to come as I learn.
+
