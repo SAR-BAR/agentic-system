@@ -1,14 +1,17 @@
 package com.demo.myfirstagent.guard;
 
-import org.springframework.stereotype.Component;
-
-@Component
+// Facts recorded by tools during one request. Owned by a SupportCase, never a Spring bean.
 public class AgentSession {
 
+    private final String caseId;
     private boolean customerVerified;
     private String customerId;
     private String lastLookedUpOrderId;
     private String lastlookedUporderCustomerId;
+
+    public AgentSession(String caseId) {
+        this.caseId = caseId;
+    }
 
     public boolean isCustomerVerified(){
         return customerVerified;
@@ -18,26 +21,27 @@ public class AgentSession {
         return customerId;
     }
 
+    public String getLastLookedUpOrderId(){
+        return lastLookedUpOrderId;
+    }
+
+    public boolean isVerified(String customerId){
+        return customerVerified && this.customerId.equalsIgnoreCase(customerId);
+    }
+
     public void verifyCustomer(String customerId){
         this.customerVerified = true;
         this.customerId = customerId;
-        System.out.println("[SESSION]: Customer Verified "+ customerId);
+        System.out.println("[SESSION " + caseId + "]: Customer Verified "+ customerId);
     }
 
     public void recordOrderLookup(String orderId, String orderCustomerId){
         this.lastLookedUpOrderId = orderId;
         this.lastlookedUporderCustomerId = orderCustomerId;
-        System.out.println("[SESSION]: Order Lookup recorded: "+ orderId);
+        System.out.println("[SESSION " + caseId + "]: Order Lookup recorded: "+ orderId);
     }
 
     public boolean isOrderLookedUpForVerifiedCustomer(String orderId){
-        return customerVerified && this.customerId.equals(lastlookedUporderCustomerId) && orderId.equals(lastLookedUpOrderId);
-    }
-
-    public void reset(){
-        this.customerVerified = false;
-        this.customerId = null;
-        this.lastLookedUpOrderId = null;
-        this.lastlookedUporderCustomerId = null;
+        return customerVerified && this.customerId.equalsIgnoreCase(lastlookedUporderCustomerId) && orderId.equalsIgnoreCase(lastLookedUpOrderId);
     }
 }

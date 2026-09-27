@@ -4,13 +4,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PreToolGuard {
-    private final AgentSession session;
 
-    public PreToolGuard(AgentSession session) {
-        this.session = session;
-    }
-
-    public ToolDecision check(String toolName){
+    public ToolDecision check(String toolName, AgentSession session){
         if((toolName.equals("lookUpOrder") || toolName.equals("processRefund")) && !session.isCustomerVerified()){
             return ToolDecision.deny("Customer must be verified before looking up an order", "getcustomerRecord");
         }

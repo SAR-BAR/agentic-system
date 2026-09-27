@@ -1,7 +1,7 @@
 package com.demo.myfirstagent.tool;
 
 
-import com.demo.myfirstagent.guard.AgentSession;
+import com.demo.myfirstagent.coordinator.SupportCaseHolder;
 import com.demo.myfirstagent.model.ToolResponse;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.stereotype.Component;
@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class SupportTools {
 
-    private final AgentSession agentSession;
+    private final SupportCaseHolder supportCaseHolder;
 
-    public SupportTools(AgentSession agentSession) {
-        this.agentSession = agentSession;
+    public SupportTools(SupportCaseHolder supportCaseHolder) {
+        this.supportCaseHolder = supportCaseHolder;
     }
 
     @Tool("""
@@ -25,7 +25,7 @@ public class SupportTools {
             Do not try to resolve a request that exceeds your authority.
             """)
     public ToolResponse<String> escalateTohuman(String reason){
-        String customerId = agentSession.getCustomerId();
+        String customerId = supportCaseHolder.current().session().getCustomerId();
         String ticketId = "ESC-" + (customerId !=null ? customerId : "UNK");
         System.out.println("===============");
         System.out.println("[ESCALATION]: HUMAN INPUT REQUIRED ");

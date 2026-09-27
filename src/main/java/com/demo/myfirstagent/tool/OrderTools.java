@@ -1,12 +1,15 @@
 package com.demo.myfirstagent.tool;
 
+import com.demo.myfirstagent.coordinator.SupportCaseHolder;
 import com.demo.myfirstagent.domain.Order;
 import com.demo.myfirstagent.guard.AgentSession;
 import com.demo.myfirstagent.guard.PreToolGuard;
 import com.demo.myfirstagent.guard.ToolDecision;
+import com.demo.myfirstagent.model.OrderDetails;
 import com.demo.myfirstagent.model.ToolError;
 import com.demo.myfirstagent.model.ToolResponse;
 import com.demo.myfirstagent.repository.OrderRepository;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.stereotype.Component;
 
@@ -14,22 +17,23 @@ import org.springframework.stereotype.Component;
 public class OrderTools {
 
     private final PreToolGuard preToolGuard;
-    private final AgentSession agentSession;
+    private final SupportCaseHolder supportCaseHolder;
     private final OrderRepository orderRepository;
 
-    public OrderTools(PreToolGuard preToolGuard, AgentSession agentSession, OrderRepository orderRepository) {
+    public OrderTools(PreToolGuard preToolGuard, SupportCaseHolder supportCaseHolder, OrderRepository orderRepository) {
         this.preToolGuard = preToolGuard;
-        this.agentSession = agentSession;
+        this.supportCaseHolder = supportCaseHolder;
         this.orderRepository = orderRepository;
     }
 
     @Tool("""
             Fetch the details of an order by orderId.
-            Returns the order amount, item, customerId, and status.
+            Returns the order amount in US dollars (amountUsd), item, customerId, and whether it was already refunded.
             The order Id has the format O followed by digits, for example O100.
             """)
-    public ToolResponse<Order> lookUpOrder(String orderId){
-        ToolDecision decision = preToolGuard.check("lookUpOrder");
+    public ToolResponse<OrderDetails> lookUpOrder(String orderId){
+        AgentSession session = supportCaseHolder.current().session();
+        ToolDecision decision = preToolGuard.check("lookUpOrder", session);
 
         //Customer must be verified
         if(!decision.allowed()){
@@ -42,19 +46,20 @@ public class OrderTools {
         if(order == null){
             return ToolResponse.error(new ToolError("validation", false, "No order found with id "+ orderId, null));
         }
-        agentSession.recordOrderLookup(order.getOrderId(), order.getCustomerId());
-        return ToolResponse.success(order);
+        session.recordOrderLookup(order.getOrderId(), order.getCustomerId());
+        return ToolResponse.success(OrderDetails.from(order));
     }
 
     @Tool("""
             Process a refund for an order.
             The customer must already be verified.
             The order must have been looked up and confirmed to belong to the verified customer.
-            The amount must be the exact order amount.
+            The amount must be the exact order amountUsd returned by lookUpOrder.
             Do not guess the refund amount.
             """)
-    public ToolResponse<String> processRefund(String orderId, double amount){
-        ToolDecision decision = preToolGuard.check("processRefund");
+    public ToolResponse<String> processRefund(String orderId, @P("Refund amount in US dollars, e.g. 99.00") double amount){
+        AgentSession session = supportCaseHolder.current().session();
+        ToolDecision decision = preToolGuard.check("processRefund", session);
 
         // Customer should be verified
         if(!decision.allowed()){
@@ -63,9 +68,25 @@ public class OrderTools {
         }
 
         // Order must belong to same customer verification
-        if(!agentSession.isOrderLookedUpForVerifiedCustomer(orderId)){
-            System.out.println("[PRE-TOOL]: locked processRefund - order not verified");
+        if(!session.isOrderLookedUpForVerifiedCustomer(orderId)){
+            System.out.println("[PRE-TOOL]: Blocked processRefund - order not verified");
             return ToolResponse.blocked("order not verified for the verified customer", "lookUpOrder");
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if(order == null){
+            return ToolResponse.error(new ToolError("validation", false, "No order found with id "+ orderId, null));
+        }
+
+        // Already refunded is a hard stop, checked before anything that could route to escalation
+        if(order.getStatus() == Order.STATUS_REFUNDED){
+            System.out.println("[PRE-TOOL]: Blocked processRefund - already refunded");
+            return ToolResponse.blocked("Order is already refunded.", null);
+        }
+
+        if(Math.round(amount * 100) != order.getAmount()){
+            System.out.println("[PRE-TOOL]: Blocked processRefund - amount mismatch");
+            return ToolResponse.blocked(String.format("Amount must be equal to order amount $%.2f.", order.getAmount() / 100.0), null);
         }
 
         //Refund amount check
@@ -75,22 +96,8 @@ public class OrderTools {
             return ToolResponse.blocked(refundPolicy.reason(), refundPolicy.requiredTool());
         }
 
-
         System.out.println("[TOOL]: processRefund(" + orderId + ", " + amount + ")");
-        Order order = orderRepository.findById(orderId).orElse(null);
-        if(order == null){
-            return ToolResponse.error(new ToolError("validation", false, "No order found with id "+ orderId, null));
-        }
-        if(order.getStatus() == 5){
-            return ToolResponse.blocked("Order is already refunded.", null);
-        }
-
-        double orderAmount = order.getAmount() / 100.0;
-        if(Double.compare(amount, orderAmount) != 0){
-            return ToolResponse.blocked("Amount must be equal to order amount.", null);
-        }
-
         String refundId = "REF-" + orderId;
-        return ToolResponse.success("Refund processed successfully. " + "Rwfund id-> " + refundId + ", amount: $" + String.format("%.2f", amount));
+        return ToolResponse.success("Refund processed successfully. " + "Refund id-> " + refundId + ", amount: $" + String.format("%.2f", amount));
     }
 }

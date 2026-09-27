@@ -8,6 +8,8 @@ import jakarta.persistence.Table;
 @Table(name = "orders")
 public class Order {
 
+    public static final int STATUS_REFUNDED = 5;
+
     @Id
     private String orderId;
     private String customerId;

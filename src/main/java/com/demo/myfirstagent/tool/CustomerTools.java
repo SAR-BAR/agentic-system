@@ -1,7 +1,7 @@
 package com.demo.myfirstagent.tool;
 
 import com.demo.myfirstagent.domain.Customer;
-import com.demo.myfirstagent.guard.AgentSession;
+import com.demo.myfirstagent.coordinator.SupportCaseHolder;
 import com.demo.myfirstagent.model.ToolError;
 import com.demo.myfirstagent.model.ToolResponse;
 import com.demo.myfirstagent.repository.CustomerRepository;
@@ -11,11 +11,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class CustomerTools {
 
-    private final AgentSession agentSession;
+    private final SupportCaseHolder supportCaseHolder;
     private final CustomerRepository customerRepository;
 
-    public CustomerTools(AgentSession agentSession, CustomerRepository customerRepository) {
-        this.agentSession = agentSession;
+    public CustomerTools(SupportCaseHolder supportCaseHolder, CustomerRepository customerRepository) {
+        this.supportCaseHolder = supportCaseHolder;
         this.customerRepository = customerRepository;
     }
 
@@ -31,7 +31,7 @@ public class CustomerTools {
         if(customer == null){
             return ToolResponse.error(new ToolError("validation", false, "No customer found with id "+ customerid, null));
         }
-        agentSession.verifyCustomer(customerid);
+        supportCaseHolder.current().session().verifyCustomer(customer.getCustomerId());
         return ToolResponse.success(customer);
     }
 }

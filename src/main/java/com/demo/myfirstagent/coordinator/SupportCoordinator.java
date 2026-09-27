@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class SupportCoordinator {
    private final CoordinationAssistant coordinationAssistant;
-   private final CoordinatorContext coordinatorContext;
+   private final SupportCaseHolder supportCaseHolder;
 
-    public SupportCoordinator(ChatModel chatModel, CoordinatorTools coordinatorTools, CoordinatorContext context) {
-       this.coordinatorContext = context;
+    public SupportCoordinator(ChatModel chatModel, CoordinatorTools coordinatorTools, SupportCaseHolder supportCaseHolder) {
+       this.supportCaseHolder = supportCaseHolder;
         this.coordinationAssistant = AiServices.builder(CoordinationAssistant.class)
                 .chatModel(chatModel)
                 .tools(coordinatorTools)
@@ -20,7 +20,8 @@ public class SupportCoordinator {
     }
 
     public String handleRequest(String userRequest){
-        this.coordinatorContext.clear();
-        return coordinationAssistant.handle(userRequest);
+        SupportCase supportCase = SupportCase.open();
+        System.out.println("[COORDINATOR]: opened " + supportCase.caseId());
+        return supportCaseHolder.runInCase(supportCase, () -> coordinationAssistant.handle(userRequest));
     }
 }
