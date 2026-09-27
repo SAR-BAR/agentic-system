@@ -1,9 +1,10 @@
 package com.demo.myfirstagent.tool;
 
-import com.demo.myfirstagent.data.FakeDatabase;
+import com.demo.myfirstagent.domain.Customer;
 import com.demo.myfirstagent.guard.AgentSession;
 import com.demo.myfirstagent.model.ToolError;
 import com.demo.myfirstagent.model.ToolResponse;
+import com.demo.myfirstagent.repository.CustomerRepository;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.stereotype.Component;
 
@@ -11,9 +12,11 @@ import org.springframework.stereotype.Component;
 public class CustomerTools {
 
     private final AgentSession agentSession;
+    private final CustomerRepository customerRepository;
 
-    public CustomerTools(AgentSession agentSession) {
+    public CustomerTools(AgentSession agentSession, CustomerRepository customerRepository) {
         this.agentSession = agentSession;
+        this.customerRepository = customerRepository;
     }
 
     @Tool("""
@@ -21,10 +24,10 @@ public class CustomerTools {
             Use this tool to verify that a customer exists.
             Customerids have the format C followed by digits, for example C001.
             """)
-    public ToolResponse<FakeDatabase.CustomerRecord> getcustomerRecord(String customerid){
+    public ToolResponse<Customer> getcustomerRecord(String customerid){
         System.out.println("[TOOL]: getcustomer(" + customerid + ")");
 
-        FakeDatabase.CustomerRecord customer = FakeDatabase.CUSTOMERS.get(customerid);
+        Customer customer = customerRepository.findById(customerid).orElse(null);
         if(customer == null){
             return ToolResponse.error(new ToolError("validation", false, "No customer found with id "+ customerid, null));
         }

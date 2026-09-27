@@ -1,11 +1,12 @@
 package com.demo.myfirstagent.tool;
 
-import com.demo.myfirstagent.data.FakeDatabase;
+import com.demo.myfirstagent.domain.Order;
 import com.demo.myfirstagent.guard.AgentSession;
 import com.demo.myfirstagent.guard.PreToolGuard;
 import com.demo.myfirstagent.guard.ToolDecision;
 import com.demo.myfirstagent.model.ToolError;
 import com.demo.myfirstagent.model.ToolResponse;
+import com.demo.myfirstagent.repository.OrderRepository;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.stereotype.Component;
 
@@ -14,10 +15,12 @@ public class OrderTools {
 
     private final PreToolGuard preToolGuard;
     private final AgentSession agentSession;
+    private final OrderRepository orderRepository;
 
-    public OrderTools(PreToolGuard preToolGuard, AgentSession agentSession) {
+    public OrderTools(PreToolGuard preToolGuard, AgentSession agentSession, OrderRepository orderRepository) {
         this.preToolGuard = preToolGuard;
         this.agentSession = agentSession;
+        this.orderRepository = orderRepository;
     }
 
     @Tool("""
@@ -25,7 +28,7 @@ public class OrderTools {
             Returns the order amount, item, customerId, and status.
             The order Id has the format O followed by digits, for example O100.
             """)
-    public ToolResponse<FakeDatabase.OrderRecord> lookUpOrder(String orderId){
+    public ToolResponse<Order> lookUpOrder(String orderId){
         ToolDecision decision = preToolGuard.check("lookUpOrder");
 
         //Customer must be verified
@@ -35,11 +38,11 @@ public class OrderTools {
         }
 
         System.out.println("[TOOL]: lookUpOrder(" + orderId + ")");
-        FakeDatabase.OrderRecord order = FakeDatabase.ORDERS.get(orderId);
+        Order order = orderRepository.findById(orderId).orElse(null);
         if(order == null){
             return ToolResponse.error(new ToolError("validation", false, "No order found with id "+ orderId, null));
         }
-        agentSession.recordOrderLookup(order.orderId(), order.customerid());
+        agentSession.recordOrderLookup(order.getOrderId(), order.getCustomerId());
         return ToolResponse.success(order);
     }
 
@@ -74,15 +77,15 @@ public class OrderTools {
 
 
         System.out.println("[TOOL]: processRefund(" + orderId + ", " + amount + ")");
-        FakeDatabase.OrderRecord order = FakeDatabase.ORDERS.get(orderId);
+        Order order = orderRepository.findById(orderId).orElse(null);
         if(order == null){
             return ToolResponse.error(new ToolError("validation", false, "No order found with id "+ orderId, null));
         }
-        if(order.status() == 5){
+        if(order.getStatus() == 5){
             return ToolResponse.blocked("Order is already refunded.", null);
         }
 
-        double orderAmount = order.amountCents() / 100.0;
+        double orderAmount = order.getAmount() / 100.0;
         if(Double.compare(amount, orderAmount) != 0){
             return ToolResponse.blocked("Amount must be equal to order amount.", null);
         }

@@ -50,13 +50,20 @@ public class CoordinatorTools {
         if(verification == null || !verification.verified()){
             return "Cannot process refund. Customer has not been verified. ";
         }
-        return refundProcessAgent.process("""
-                Process a refund for order %s. 
-                Verified customer %s. 
+        String result = refundProcessAgent.process("""
+                Process a refund for order %s.
+                Verified customer %s.
                 customerName = %s
                 plan = %s
-                
+
                 Look up te order and refund the exact order amount.
                 """.formatted(orderId, verification.customerId(), verification.customerName(), verification.plan()));
+
+        // LangChain4j rejects blank tool results, which would crash the coordinator.
+        if(result == null || result.isBlank()){
+            System.out.println("[COORDINATOR TOOL]: refund agent returned no result for order: " + orderId);
+            return "Refund agent returned no result for order " + orderId + ". The refund was not confirmed; escalate to a human.";
+        }
+        return result;
     }
 }

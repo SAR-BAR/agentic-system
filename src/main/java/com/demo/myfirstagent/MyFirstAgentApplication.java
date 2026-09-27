@@ -17,9 +17,11 @@ public class MyFirstAgentApplication {
     @Bean
     CommandLineRunner tstAgent(SupportCoordinator agent) {
         return args -> {
-            String response = agent.handleRequest("""
-                    I am customer C001. Please refund my order O001.
-                    """);
+            String request = args.length > 0
+                    ? String.join(" ", args)
+                    : "I am customer C001. Please refund my order O001.";
+            System.out.println("USER REQUEST: " + request);
+            String response = agent.handleRequest(request);
             System.out.println("FINAL RESPONSE ");
             System.out.println(response);
         };
