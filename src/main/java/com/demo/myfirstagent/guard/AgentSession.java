@@ -8,6 +8,7 @@ public class AgentSession {
     private String customerId;
     private String lastLookedUpOrderId;
     private String lastlookedUporderCustomerId;
+    private boolean lastLookedUpOrderRefunded;
 
     public AgentSession(String caseId) {
         this.caseId = caseId;
@@ -35,9 +36,14 @@ public class AgentSession {
         System.out.println("[SESSION " + caseId + "]: Customer Verified "+ customerId);
     }
 
-    public void recordOrderLookup(String orderId, String orderCustomerId){
+    public boolean isLastLookedUpOrderRefunded(){
+        return lastLookedUpOrderRefunded;
+    }
+
+    public void recordOrderLookup(String orderId, String orderCustomerId, boolean refunded){
         this.lastLookedUpOrderId = orderId;
         this.lastlookedUporderCustomerId = orderCustomerId;
+        this.lastLookedUpOrderRefunded = refunded;
         System.out.println("[SESSION " + caseId + "]: Order Lookup recorded: "+ orderId);
     }
 

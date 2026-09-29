@@ -77,7 +77,8 @@ public class CoordinatorTools {
                 customerName = %s
                 plan = %s
 
-                Look up te order and refund the exact order amount.
+                Look up the order and refund the exact order amount only if it is eligible.
+                If it is not eligible, explain why.
                 """.formatted(orderId, verification.customerId(), verification.customerName(), verification.plan()));
 
         if(result == null || result.isBlank()){

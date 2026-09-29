@@ -9,6 +9,7 @@ import com.demo.myfirstagent.model.VerificationFindings;
 import com.demo.myfirstagent.tool.CoordinatorTools;
 import com.demo.myfirstagent.tool.CustomerTools;
 import com.demo.myfirstagent.tool.OrderTools;
+import com.demo.myfirstagent.tool.SupportTools;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +37,9 @@ class RefundGuardrailTest {
     @Autowired
     private CoordinatorTools coordinatorTools;
 
+    @Autowired
+    private SupportTools supportTools;
+
     @MockitoBean
     private VerifierAgent verifierAgent;
 
@@ -51,6 +55,36 @@ class RefundGuardrailTest {
         });
         assertEquals(99.00, order.amountUsd());
         assertFalse(order.alreadyRefunded());
+    }
+
+    @Test
+    void escalationTicketsAreUniquePerCase() {
+        SupportCase first = SupportCase.open();
+        SupportCase second = SupportCase.open();
+        String ticket1 = supportCaseHolder.runInCase(first, () -> {
+            customerTools.getcustomerRecord("C002");
+            return supportTools.escalateTohuman("test").data();
+        });
+        String ticket2 = supportCaseHolder.runInCase(second, () -> {
+            customerTools.getcustomerRecord("C002");
+            return supportTools.escalateTohuman("test").data();
+        });
+
+        assertTrue(ticket1.contains(first.caseId()));
+        assertTrue(ticket2.contains(second.caseId()));
+        assertNotEquals(ticket1, ticket2, "same customer must get a different ticket per case");
+    }
+
+    @Test
+    void escalationIsRefusedForAnAlreadyRefundedOrder() {
+        ToolResponse<String> result = inNewCase(() -> {
+            customerTools.getcustomerRecord("C002");
+            orderTools.lookUpOrder("O002"); // status refunded
+            return supportTools.escalateTohuman("already refunded");
+        });
+        assertFalse(result.success(), "no ticket should be created");
+        assertNull(result.requiredTool());
+        assertTrue(result.error().description().contains("already refunded"));
     }
 
     @Test
@@ -72,7 +106,7 @@ class RefundGuardrailTest {
             return orderTools.processRefund("O002", 900.00); // cents mistaken for dollars
         });
         assertFalse(result.success());
-        assertEquals("Order is already refunded.", result.error().description());
+        assertTrue(result.error().description().startsWith("Order is already refunded."));
         assertNull(result.requiredTool(), "must not route an already-refunded order to escalation");
     }
 

@@ -46,7 +46,7 @@ public class OrderTools {
         if(order == null){
             return ToolResponse.error(new ToolError("validation", false, "No order found with id "+ orderId, null));
         }
-        session.recordOrderLookup(order.getOrderId(), order.getCustomerId());
+        session.recordOrderLookup(order.getOrderId(), order.getCustomerId(), order.getStatus() == Order.STATUS_REFUNDED);
         return ToolResponse.success(OrderDetails.from(order));
     }
 
@@ -81,7 +81,7 @@ public class OrderTools {
         // Already refunded is a hard stop, checked before anything that could route to escalation
         if(order.getStatus() == Order.STATUS_REFUNDED){
             System.out.println("[PRE-TOOL]: Blocked processRefund - already refunded");
-            return ToolResponse.blocked("Order is already refunded.", null);
+            return ToolResponse.blocked("Order is already refunded. Do not retry or escalate; tell the customer it was already refunded.", null);
         }
 
         if(Math.round(amount * 100) != order.getAmount()){
