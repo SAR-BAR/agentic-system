@@ -2,6 +2,7 @@ package com.demo.myfirstagent.coordinator;
 
 import com.demo.myfirstagent.agent.CoordinationAssistant;
 import com.demo.myfirstagent.tool.CoordinatorTools;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ public class SupportCoordinator {
         this.coordinationAssistant = AiServices.builder(CoordinationAssistant.class)
                 .chatModel(chatModel)
                 .tools(coordinatorTools)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
                 .build();
     }
 
@@ -23,5 +25,19 @@ public class SupportCoordinator {
         SupportCase supportCase = SupportCase.open();
         System.out.println("[COORDINATOR]: opened " + supportCase.caseId());
         return supportCaseHolder.runInCase(supportCase, () -> coordinationAssistant.handle(userRequest));
+    }
+
+    // Keeps one SupportCase bound for every turn, so verification carries over between messages.
+    public void runConversation(Runnable conversation){
+        SupportCase supportCase = SupportCase.open();
+        System.out.println("[COORDINATOR]: opened " + supportCase.caseId());
+        supportCaseHolder.runInCase(supportCase, () -> {
+            conversation.run();
+            return null;
+        });
+    }
+
+    public String handleTurn(String userMessage){
+        return coordinationAssistant.handle(userMessage);
     }
 }

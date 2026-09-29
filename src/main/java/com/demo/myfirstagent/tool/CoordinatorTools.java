@@ -34,6 +34,11 @@ public class CoordinatorTools {
     public VerificationFindings verifyCustomer(String customerId){
         SupportCase supportCase = supportCaseHolder.current();
         VerificationFindings reported = verifierAgent.verify("Verify customer "+ customerId);
+        // Small local models sometimes skip or garble the lookup, so give the verifier one more try.
+        if(!supportCase.session().isVerified(customerId)){
+            System.out.println("[COORDINATOR TOOL]: lookup did not succeed for " + customerId + ", asking verifier again");
+            reported = verifierAgent.verify("Verify customer "+ customerId + ". Call getcustomerRecord with customerid = " + customerId + ".");
+        }
 
         // The verifier's answer is only a claim. The session records whether getcustomerRecord actually succeeded.
         VerificationFindings findings;
